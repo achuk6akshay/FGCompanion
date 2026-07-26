@@ -111,6 +111,11 @@ fun FlightDisplay(
             screenWidth = w,
             screenHeight = h
         )
+        drawThrottleIndicator(
+            throttle = data.throttle,
+            screenWidth = w,
+            screenHeight = h
+        )
     }
 }
 
@@ -1512,5 +1517,109 @@ private fun DrawScope.drawVerticalSpeedValue(
         x,
         y,
         paint
+    )
+}
+
+private fun DrawScope.drawThrottleIndicator(
+    throttle: Double,
+    screenWidth: Float,
+    screenHeight: Float
+) {
+    val position = throttle
+        .coerceIn(0.0, 1.0)
+        .toFloat()
+
+    // Extreme left
+    val x = screenWidth * 0.1f
+
+    val top = screenHeight * 0.36f
+    val bottom = screenHeight * 0.64f
+
+    val trackWidth = screenWidth * 0.012f
+    val stroke = screenHeight * 0.003f
+
+    val green = Color(0xFF00FF66)
+    val white = Color.White
+
+    // Outer throttle track
+    drawRect(
+        color = white,
+        topLeft = Offset(
+            x - trackWidth / 2f,
+            top
+        ),
+        size = Size(
+            trackWidth,
+            bottom - top
+        ),
+        style = androidx.compose.ui.graphics.drawscope.Stroke(
+            width = stroke
+        )
+    )
+
+    /*
+     * Throttle direction:
+     *
+     * 1.0 = TOP
+     * 0.0 = BOTTOM
+     */
+    val leverY =
+        bottom - (bottom - top) * position
+
+    // Horizontal throttle lever
+    drawLine(
+        color = green,
+        start = Offset(
+            x - screenWidth * 0.012f,
+            leverY
+        ),
+        end = Offset(
+            x + screenWidth * 0.022f,
+            leverY
+        ),
+        strokeWidth = screenHeight * 0.007f
+    )
+
+    // Triangle pointing into the scale
+    val triangleSize = screenHeight * 0.012f
+
+    val pointer = Path().apply {
+
+        moveTo(
+            x + trackWidth / 2f,
+            leverY
+        )
+
+        lineTo(
+            x + trackWidth / 2f + triangleSize,
+            leverY - triangleSize
+        )
+
+        lineTo(
+            x + trackWidth / 2f + triangleSize,
+            leverY + triangleSize
+        )
+
+        close()
+    }
+
+    drawPath(
+        path = pointer,
+        color = green
+    )
+
+    // THR label
+    val labelPaint = Paint().apply {
+        color = android.graphics.Color.WHITE
+        textSize = screenHeight * 0.025f
+        textAlign = Paint.Align.CENTER
+        isAntiAlias = true
+    }
+
+    drawContext.canvas.nativeCanvas.drawText(
+        "THR",
+        x,
+        top - screenHeight * 0.025f,
+        labelPaint
     )
 }
