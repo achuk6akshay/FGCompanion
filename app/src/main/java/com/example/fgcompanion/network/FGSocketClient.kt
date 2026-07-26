@@ -86,19 +86,34 @@ class FGSocketClient {
                 .trim()
                 .split(",")
 
-            if (values.size < 8) {
-                return null
-            }
+            val size = 14
+
+            if (values.size < size) return null
 
             FlightData(
                 latitude = values[0].trim().toDouble(),
                 longitude = values[1].trim().toDouble(),
                 altitude = values[2].trim().toDouble(),
+
                 airspeed = values[3].trim().toDouble(),
+
                 heading = values[4].trim().toDouble(),
                 pitch = values[5].trim().toDouble(),
                 roll = values[6].trim().toDouble(),
-                verticalSpeed = values[7].trim().toDouble()
+
+                verticalSpeed = values[7].trim().toDouble(),
+
+                trueAirspeed = values[8].trim().toDouble(),
+                groundSpeed = values[9].trim().toDouble(),
+                magneticTrack = values[10].trim().toDouble(),
+                autopilotOn =
+                        values[11].trim() == "1" ||
+                        values[11].trim().equals("true", ignoreCase = true),
+                gearDown =
+                        values[12].trim() == "1" ||
+                        values[12].trim().equals("true", ignoreCase = true),
+
+                flapPosition = values[13].trim().toDouble()
             )
 
         } catch (e: Exception) {

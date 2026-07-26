@@ -23,19 +23,9 @@ fun DashboardScreen(
         viewModel.startListening(5500)
     }
 
-    Box(
+    FlightDisplay(
+        data = data,
         modifier = Modifier.fillMaxSize()
-    ) {
+    )
 
-        PFDScreen(
-            data = data,
-            modifier = Modifier.fillMaxSize()
-        )
-
-        Text(
-            text = status,
-            color = Color.White,
-            modifier = Modifier.align(Alignment.TopCenter)
-        )
-    }
 }
