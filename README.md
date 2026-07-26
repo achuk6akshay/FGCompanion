@@ -155,5 +155,5 @@ Add the following XML definition:
 Run FlightGear with the following command-line option:
 
 ```bash
-fgfs --generic=socket,out,30,<PHONE_IP>,5500,udp,myprotocol.xml
+fgfs --generic=socket,out,30,<PHONE_IP>,5500,udp,fgcompanion.xml
 
