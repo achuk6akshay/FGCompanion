@@ -24,5 +24,6 @@ data class FlightData(
     val autopilotOn: Boolean = false,
     val gearDown: Boolean = false,
 
-    val flapPosition: Double = 0.0
+    val flapPosition: Double = 0.0,
+    val throttle: Double = 0.0
 )

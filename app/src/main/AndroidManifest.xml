@@ -19,6 +19,7 @@
             android:label="@string/app_name"
             android:theme="@style/Theme.FGCompanion"
             android:windowSoftInputMode="adjustResize">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
