@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import com.example.fgcompanion.data.FlightData
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.roundToInt
 //import androidx.compose.ui.geometry.Rect
 //import androidx.compose.ui.graphics.drawscope.clipRect
 
@@ -81,38 +82,42 @@ fun FlightDisplay(
             screenWidth = w,
             screenHeight = h
         )
-
         drawBankScale(
             roll = data.roll,
             centerX = centerX,
             screenHeight = h
         )
-
         drawAircraftSymbol(
             centerX = centerX,
             centerY = centerY,
             screenWidth = w
         )
-
+        drawRadarAltitude(
+            altitudeAgl = data.altitudeAgl,
+            screenWidth = w,
+            screenHeight = h
+        )
         drawAirspeedTape(
             airspeed = data.airspeed,
             screenWidth = w,
             screenHeight = h
         )
-
         drawAltitudeTape(
             altitude = data.altitude,
             screenWidth = w,
             screenHeight = h
         )
-
+        drawBaroSetting(
+            baroInHg = data.baroInHg,
+            screenWidth = w,
+            screenHeight = h
+        )
         drawHeadingArc(
             heading = data.heading,
             track = data.magneticTrack,
             screenWidth = w,
             screenHeight = h
         )
-
         drawSpeedInfo(
             trueAirspeed = data.trueAirspeed,
             groundSpeed = data.groundSpeed,
@@ -168,7 +173,7 @@ private fun DrawScope.drawAttitude(
      * Scaling it relative to screen height keeps it usable
      * across phones and tablets.
      */
-    val pixelsPerDegree = screenHeight / 90f
+    val pixelsPerDegree = screenHeight / 100f
 
     val pitchOffset =
         pitch.toFloat() * pixelsPerDegree
@@ -403,6 +408,42 @@ private fun DrawScope.drawAircraftSymbol(
     drawPath(
         path = aircraft,
         color = PfdYellow
+    )
+}
+
+private fun DrawScope.drawRadarAltitude(
+    altitudeAgl: Double,
+    screenWidth: Float,
+    screenHeight: Float
+) {
+    // Only relevant close to the ground
+    if (altitudeAgl > 2500.0) return
+
+    // Avoid invalid/negative readings
+    if (altitudeAgl < 0.0) return
+
+    val radarAltitude = when {
+        altitudeAgl < 100.0 ->
+            (altitudeAgl / 5.0).roundToInt() * 5
+
+        altitudeAgl < 1000.0 ->
+            (altitudeAgl / 10.0).roundToInt() * 10
+
+        else ->
+            (altitudeAgl / 20.0).roundToInt() * 20
+    }
+
+    val paint = sharedCenterPaint.apply {
+        color = android.graphics.Color.GREEN
+        textSize = screenHeight * 0.05f
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+    }
+
+    drawContext.canvas.nativeCanvas.drawText(
+        "$radarAltitude AGL",
+        screenWidth * 0.8f,
+        screenHeight * 0.7f,
+        paint
     )
 }
 
@@ -882,6 +923,28 @@ private fun DrawScope.drawAltitudeTape(
     )
 }
 
+private fun DrawScope.drawBaroSetting(
+    baroInHg: Double,
+    screenWidth: Float,
+    screenHeight: Float
+) {
+    // Convert inHg -> hPa
+    val hPa = baroInHg * 33.8639
+
+    val paint = sharedCenterPaint.apply {
+        color = android.graphics.Color.WHITE
+        textSize = screenHeight * 0.032f
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+    }
+
+    drawContext.canvas.nativeCanvas.drawText(
+        "QNH ${hPa.roundToInt()}",
+        screenWidth * 0.7f,
+        screenHeight * 0.87f,
+        paint
+    )
+}
+
 private fun DrawScope.drawHeadingArc(
     heading: Double,
     track: Double,
@@ -1172,8 +1235,8 @@ private fun DrawScope.drawSpeedInfo(
 
     val valuePaint = sharedLeftPaint.apply {
         color = android.graphics.Color.GREEN
-        textSize = screenHeight * 0.06f
-        typeface = android.graphics.Typeface.DEFAULT
+        textSize = screenHeight * 0.05f
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
     }
 
     val x =
@@ -1217,27 +1280,18 @@ private fun DrawScope.drawAutopilotIndicator(
     screenHeight: Float,
     centerX: Float
 ) {
+    if (!autopilotOn) return
+
     val paint = sharedCenterPaint.apply {
-        color = if (autopilotOn) {
-            android.graphics.Color.GREEN
-        } else {
-            android.graphics.Color.GREEN
-        }
-
-        textSize = screenHeight * 0.06f
-        typeface = android.graphics.Typeface.DEFAULT
-    }
-
-    val text = if (autopilotOn) {
-        "AP ON"
-    } else {
-        ""
+        color = android.graphics.Color.GREEN
+        textSize = screenHeight * 0.040f
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
     }
 
     drawContext.canvas.nativeCanvas.drawText(
-        text,
-        centerX - screenWidth * 0.3f  ,
-        screenHeight * 0.2f,
+        "AP ON",
+        centerX - screenWidth * 0.30f,
+        screenHeight * 0.15f,
         paint
     )
 }
@@ -1247,13 +1301,11 @@ private fun DrawScope.drawGearIndicator(
     screenWidth: Float,
     screenHeight: Float
 ) {
-    val green = Color(0xFF00FF66)
-    val red = Color(0xFFEA043B)
-    var color = green
+
     // Gear up/not down -> change colour
-    if (!gearDown) color = red
+    if (!gearDown) return
 
-
+    val color = Color(0xFF00FF66)
     val cx = screenWidth * 0.1f
     val cy = screenHeight * 0.2f
 
@@ -1382,7 +1434,7 @@ private fun DrawScope.drawFlapIndicator(
         .toFloat()
 
     // Extreme-right position
-    val x = screenWidth * 0.93f
+    val x = screenWidth * 0.91f
 
     val top = screenHeight * 0.34f
     val bottom = screenHeight * 0.66f
@@ -1540,8 +1592,8 @@ private fun DrawScope.drawThrottleIndicator(
     // Extreme left
     val x = screenWidth * 0.1f
 
-    val top = screenHeight * 0.36f
-    val bottom = screenHeight * 0.64f
+    val top = screenHeight * 0.34f
+    val bottom = screenHeight * 0.66f
 
     val trackWidth = screenWidth * 0.012f
     val stroke = screenHeight * 0.003f

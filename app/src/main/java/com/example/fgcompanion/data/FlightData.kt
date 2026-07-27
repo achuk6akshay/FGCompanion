@@ -25,5 +25,8 @@ data class FlightData(
     val gearDown: Boolean = false,
 
     val flapPosition: Double = 0.0,
-    val throttle: Double = 0.0
+    val throttle: Double = 0.0,
+    val baroInHg: Double = 29.92,
+    val altitudeAgl: Double = 0.0
+
 )

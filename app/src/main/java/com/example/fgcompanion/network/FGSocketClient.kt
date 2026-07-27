@@ -86,7 +86,7 @@ class FGSocketClient {
                 .trim()
                 .split(",")
 
-            val size = 15
+            val size = 17
 
             if (values.size < size) return null
 
@@ -114,7 +114,9 @@ class FGSocketClient {
                         values[12].trim().equals("true", ignoreCase = true),
 
                 flapPosition = values[13].trim().toDouble() ,
-                throttle = values[14].trim().toDouble()
+                throttle = values[14].trim().toDouble(),
+                baroInHg = values[15].trim().toDouble(),
+                altitudeAgl = values[16].trim().toDouble()
             )
 
         } catch (e: Exception) {
