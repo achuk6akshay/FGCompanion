@@ -10,10 +10,12 @@ import com.example.fgcompanion.data.FlightData
 @Composable
 fun PFDScreen(
     data: FlightData,
+    dataIncoming: Boolean,
     modifier: Modifier = Modifier
 ) {
     FlightDisplay(
         data = data,
+        dataIncoming = dataIncoming,
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)

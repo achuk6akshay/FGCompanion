@@ -11,14 +11,15 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.rotate
+//import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.nativeCanvas
 import com.example.fgcompanion.data.FlightData
 import kotlin.math.cos
 import kotlin.math.sin
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.drawscope.clipRect
+//import androidx.compose.ui.geometry.Rect
+//import androidx.compose.ui.graphics.drawscope.clipRect
 
 
 private val SkyBlue = Color(0xFF238AE5)
@@ -27,9 +28,37 @@ private val PfdWhite = Color.White
 private val PfdYellow = Color(0xFFFFFF00)
 private val PfdMagenta = Color(0xFFFF00FF)
 
+private val sharedCenterPaint = Paint().apply {
+    textAlign = Paint.Align.CENTER
+    isAntiAlias = true
+}
+
+private val sharedLeftPaint = Paint().apply {
+    textAlign = Paint.Align.LEFT
+    isAntiAlias = true
+}
+
+private val sharedRightPaint = Paint().apply {
+    textAlign = Paint.Align.RIGHT
+    isAntiAlias = true
+}
+
+private val sharedPath = Path()
+private val stroke3f = Stroke(width = 3f)
+
+/*
+     * Common bank-angle marks.
+*/
+private val bankMarks = intArrayOf(
+    -60, -45, -30, -20, -10,
+    0,
+    10, 20, 30, 45, 60
+)
+
 @Composable
 fun FlightDisplay(
     data: FlightData,
+    dataIncoming: Boolean,
     modifier: Modifier = Modifier
 ) {
     Canvas(
@@ -116,6 +145,12 @@ fun FlightDisplay(
             screenWidth = w,
             screenHeight = h
         )
+        if (!dataIncoming) {
+            drawNoDataWarning(
+                screenWidth = w,
+                screenHeight = h
+            )
+        }
     }
 }
 
@@ -145,83 +180,83 @@ private fun DrawScope.drawAttitude(
     val hugeWidth = screenWidth * 3f
     val hugeHeight = screenHeight * 4f
 
-    val attitudeLeft = screenWidth * 0.22f
-    val attitudeRight = screenWidth * 0.76f
-    val attitudeTop = screenHeight * 0.12f
-    val attitudeBottom = screenHeight * 0.80f
+    //   val attitudeLeft = screenWidth * 0.22f
+    //    val attitudeRight = screenWidth * 0.76f
+    //    val attitudeTop = screenHeight * 0.12f
+    //    val attitudeBottom = screenHeight * 0.80f
 
 
 
-        withTransform({
+    withTransform({
 
-            /*
-             * Aircraft rolls right -> horizon rotates left.
-             */
-            rotate(
-                degrees = -roll.toFloat(),
-                pivot = Offset(centerX, centerY)
+        /*
+         * Aircraft rolls right -> horizon rotates left.
+         */
+        rotate(
+            degrees = -roll.toFloat(),
+            pivot = Offset(centerX, centerY)
+        )
+
+        /*
+         * Nose up -> horizon moves down.
+         */
+        translate(
+            left = 0f,
+            top = pitchOffset
+        )
+
+    }) {
+
+        // SKY
+
+        drawRect(
+            color = SkyBlue,
+            topLeft = Offset(
+                centerX - hugeWidth / 2f,
+                centerY - hugeHeight
+            ),
+            size = Size(
+                hugeWidth,
+                hugeHeight
             )
+        )
 
-            /*
-             * Nose up -> horizon moves down.
-             */
-            translate(
-                left = 0f,
-                top = pitchOffset
+        // GROUND
+
+        drawRect(
+            color = GroundBrown,
+            topLeft = Offset(
+                centerX - hugeWidth / 2f,
+                centerY
+            ),
+            size = Size(
+                hugeWidth,
+                hugeHeight
             )
+        )
 
-        }) {
+        // Main horizon line
 
-            // SKY
+        drawLine(
+            color = PfdWhite,
+            start = Offset(
+                centerX - screenWidth,
+                centerY
+            ),
+            end = Offset(
+                centerX + screenWidth,
+                centerY
+            ),
+            strokeWidth = 3f
+        )
 
-            drawRect(
-                color = SkyBlue,
-                topLeft = Offset(
-                    centerX - hugeWidth / 2f,
-                    centerY - hugeHeight
-                ),
-                size = Size(
-                    hugeWidth,
-                    hugeHeight
-                )
-            )
-
-            // GROUND
-
-            drawRect(
-                color = GroundBrown,
-                topLeft = Offset(
-                    centerX - hugeWidth / 2f,
-                    centerY
-                ),
-                size = Size(
-                    hugeWidth,
-                    hugeHeight
-                )
-            )
-
-            // Main horizon line
-
-            drawLine(
-                color = PfdWhite,
-                start = Offset(
-                    centerX - screenWidth,
-                    centerY
-                ),
-                end = Offset(
-                    centerX + screenWidth,
-                    centerY
-                ),
-                strokeWidth = 3f
-            )
-
-            drawPitchLadder(
-                centerX = centerX,
-                centerY = centerY,
-                screenWidth = screenWidth,
-                pixelsPerDegree = pixelsPerDegree
-            )
-        }
+        drawPitchLadder(
+            centerX = centerX,
+            centerY = centerY,
+            screenWidth = screenWidth,
+            pixelsPerDegree = pixelsPerDegree
+        )
+    }
 }
 
 private fun DrawScope.drawPitchLadder(
@@ -273,11 +308,10 @@ private fun DrawScope.drawPitchLadder(
             val label =
                 kotlin.math.abs(degree).toString()
 
-            val paint = Paint().apply {
+            val paint = sharedCenterPaint.apply {
                 color = android.graphics.Color.WHITE
                 textSize = screenWidth * 0.025f
-                textAlign = Paint.Align.CENTER
-                isAntiAlias = true
+                typeface = android.graphics.Typeface.DEFAULT
             }
 
             drawContext.canvas.nativeCanvas.drawText(
@@ -347,7 +381,8 @@ private fun DrawScope.drawAircraftSymbol(
     /*
      * Center aircraft nose/reference.
      */
-    val aircraft = Path().apply {
+    val aircraft = sharedPath.apply {
+        reset()
 
         moveTo(
             centerX - innerGap,
@@ -385,24 +420,7 @@ private fun DrawScope.drawBankScale(
         screenHeight * 0.46f
     )
 
-    /*
-     * Common bank-angle marks.
-     */
-    val marks = listOf(
-        -60,
-        -45,
-        -30,
-        -20,
-        -10,
-        0,
-        10,
-        20,
-        30,
-        45,
-        60
-    )
-
-    for (angle in marks) {
+    for (angle in bankMarks) {
 
         /*
          * -90 converts our aviation bank-angle convention
@@ -484,7 +502,8 @@ private fun DrawScope.drawBankScale(
     val triangleSize =
         screenHeight * 0.018f
 
-    val pointer = Path().apply {
+    val pointer = sharedPath.apply {
+        reset()
 
         moveTo(
             pointerX,
@@ -549,7 +568,7 @@ private fun DrawScope.drawAirspeedTape(
             right - left,
             bottom - top
         ),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(
+        style = Stroke(
             width = screenWidth * 0.0015f
         )
     )
@@ -573,7 +592,7 @@ private fun DrawScope.drawAirspeedTape(
             centerY -
                     ((speed - airspeed) * pixelsPerKnot).toFloat()
 
-        if (y < top || y > bottom) {
+        if (y !in top..bottom) {
             continue
         }
 
@@ -601,11 +620,10 @@ private fun DrawScope.drawAirspeedTape(
 
         if (major) {
 
-            val paint = Paint().apply {
+            val paint = sharedRightPaint.apply {
                 color = android.graphics.Color.WHITE
                 textSize = screenHeight * 0.042f
-                textAlign = Paint.Align.RIGHT
-                isAntiAlias = true
+                typeface = android.graphics.Typeface.DEFAULT
             }
 
             drawContext.canvas.nativeCanvas.drawText(
@@ -630,7 +648,8 @@ private fun DrawScope.drawAirspeedTape(
     val pointerWidth =
         screenWidth * 0.018f
 
-    val speedBox = Path().apply {
+    val speedBox = sharedPath.apply {
+        reset()
 
         moveTo(
             boxLeft,
@@ -668,16 +687,13 @@ private fun DrawScope.drawAirspeedTape(
     drawPath(
         path = speedBox,
         color = PfdWhite,
-        style = androidx.compose.ui.graphics.drawscope.Stroke(
-            width = 3f
-        )
+        style = stroke3f
     )
 
-    val currentPaint = Paint().apply {
+    val currentPaint = sharedCenterPaint.apply {
         color = android.graphics.Color.WHITE
         textSize = screenHeight * 0.060f
-        textAlign = Paint.Align.CENTER
-        isAntiAlias = true
+        typeface = android.graphics.Typeface.DEFAULT
     }
 
     drawContext.canvas.nativeCanvas.drawText(
@@ -725,7 +741,7 @@ private fun DrawScope.drawAltitudeTape(
             right - left,
             bottom - top
         ),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(
+        style = Stroke(
             width = screenWidth * 0.0015f
         )
     )
@@ -749,7 +765,7 @@ private fun DrawScope.drawAltitudeTape(
             centerY -
                     ((value - altitude) * pixelsPerFoot).toFloat()
 
-        if (y < top || y > bottom) {
+        if (y !in top..bottom) {
             continue
         }
 
@@ -779,11 +795,10 @@ private fun DrawScope.drawAltitudeTape(
 
         if (major) {
 
-            val paint = Paint().apply {
+            val paint = sharedLeftPaint.apply {
                 color = android.graphics.Color.WHITE
                 textSize = screenHeight * 0.038f
-                textAlign = Paint.Align.LEFT
-                isAntiAlias = true
+                typeface = android.graphics.Typeface.DEFAULT
             }
 
             drawContext.canvas.nativeCanvas.drawText(
@@ -811,7 +826,8 @@ private fun DrawScope.drawAltitudeTape(
     val boxHalfHeight =
         screenHeight * 0.048f
 
-    val altitudeBox = Path().apply {
+    val altitudeBox = sharedPath.apply {
+        reset()
 
         moveTo(
             pointerLeft,
@@ -849,16 +865,13 @@ private fun DrawScope.drawAltitudeTape(
     drawPath(
         path = altitudeBox,
         color = PfdWhite,
-        style = androidx.compose.ui.graphics.drawscope.Stroke(
-            width = 3f
-        )
+        style = stroke3f
     )
 
-    val currentPaint = Paint().apply {
+    val currentPaint = sharedCenterPaint.apply {
         color = android.graphics.Color.WHITE
         textSize = screenHeight * 0.054f
-        textAlign = Paint.Align.CENTER
-        isAntiAlias = true
+        typeface = android.graphics.Typeface.DEFAULT
     }
 
     drawContext.canvas.nativeCanvas.drawText(
@@ -891,11 +904,10 @@ private fun DrawScope.drawHeadingArc(
      */
     val degreesVisible = 50
 
-    val headingPaint = Paint().apply {
+    val headingPaint = sharedCenterPaint.apply {
         color = android.graphics.Color.WHITE
         textSize = screenHeight * 0.038f
-        textAlign = Paint.Align.CENTER
-        isAntiAlias = true
+        typeface = android.graphics.Typeface.DEFAULT
     }
 
     /*
@@ -915,12 +927,12 @@ private fun DrawScope.drawHeadingArc(
 
         val outerX =
             centerX +
-                    kotlin.math.cos(radians).toFloat() *
+                    cos(radians).toFloat() *
                     radius
 
         val outerY =
             arcCenterY +
-                    kotlin.math.sin(radians).toFloat() *
+                    sin(radians).toFloat() *
                     radius
 
         val major =
@@ -938,12 +950,12 @@ private fun DrawScope.drawHeadingArc(
 
         val innerX =
             centerX +
-                    kotlin.math.cos(radians).toFloat() *
+                    cos(radians).toFloat() *
                     innerRadius
 
         val innerY =
             arcCenterY +
-                    kotlin.math.sin(radians).toFloat() *
+                    sin(radians).toFloat() *
                     innerRadius
 
         drawLine(
@@ -973,12 +985,12 @@ private fun DrawScope.drawHeadingArc(
 
             val labelX =
                 centerX +
-                        kotlin.math.cos(radians).toFloat() *
+                        cos(radians).toFloat() *
                         labelRadius
 
             val labelY =
                 arcCenterY +
-                        kotlin.math.sin(radians).toFloat() *
+                        sin(radians).toFloat() *
                         labelRadius
 
             val label =
@@ -1006,7 +1018,8 @@ private fun DrawScope.drawHeadingArc(
     val triangleSize =
         screenHeight * 0.018f
 
-    val referenceTriangle = Path().apply {
+    val referenceTriangle = sharedPath.apply {
+        reset()
 
         moveTo(
             centerX,
@@ -1035,11 +1048,10 @@ private fun DrawScope.drawHeadingArc(
      * Current heading text.
      */
 
-    val currentHeadingPaint = Paint().apply {
+    val currentHeadingPaint = sharedCenterPaint.apply {
         color = android.graphics.Color.GREEN
         textSize = screenHeight * 0.045f
-        textAlign = Paint.Align.CENTER
-        isAntiAlias = true
+        typeface = android.graphics.Typeface.DEFAULT
     }
 
     val headingString =
@@ -1081,15 +1093,16 @@ private fun DrawScope.drawHeadingArc(
 
     val trackX =
         centerX +
-                kotlin.math.cos(trackRadians).toFloat() *
+                cos(trackRadians).toFloat() *
                 trackRadius
 
     val trackY =
         arcCenterY +
-                kotlin.math.sin(trackRadians).toFloat() *
+                sin(trackRadians).toFloat() *
                 trackRadius
 
-    val trackMarker = Path().apply {
+    val trackMarker = sharedPath.apply {
+        reset()
 
         moveTo(
             trackX,
@@ -1151,18 +1164,16 @@ private fun DrawScope.drawSpeedInfo(
     screenHeight: Float
 ) {
 
-    val labelPaint = Paint().apply {
+    val labelPaint = sharedLeftPaint.apply {
         color = android.graphics.Color.WHITE
         textSize = screenHeight * 0.06f
-        textAlign = Paint.Align.LEFT
-        isAntiAlias = true
+        typeface = android.graphics.Typeface.DEFAULT
     }
 
-    val valuePaint = Paint().apply {
+    val valuePaint = sharedLeftPaint.apply {
         color = android.graphics.Color.GREEN
         textSize = screenHeight * 0.06f
-        textAlign = Paint.Align.LEFT
-        isAntiAlias = true
+        typeface = android.graphics.Typeface.DEFAULT
     }
 
     val x =
@@ -1206,7 +1217,7 @@ private fun DrawScope.drawAutopilotIndicator(
     screenHeight: Float,
     centerX: Float
 ) {
-    val paint = Paint().apply {
+    val paint = sharedCenterPaint.apply {
         color = if (autopilotOn) {
             android.graphics.Color.GREEN
         } else {
@@ -1214,8 +1225,7 @@ private fun DrawScope.drawAutopilotIndicator(
         }
 
         textSize = screenHeight * 0.06f
-        textAlign = Paint.Align.CENTER
-        isAntiAlias = true
+        typeface = android.graphics.Typeface.DEFAULT
     }
 
     val text = if (autopilotOn) {
@@ -1270,7 +1280,7 @@ private fun DrawScope.drawGearIndicator(
             cx,
             cy - scale * 1.65f
         ),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(
+        style = Stroke(
             width = stroke
         )
     )
@@ -1343,7 +1353,7 @@ private fun DrawScope.drawGearIndicator(
             cx - scale * 0.75f,
             cy + scale
         ),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(
+        style = Stroke(
             width = stroke
         )
     )
@@ -1356,7 +1366,7 @@ private fun DrawScope.drawGearIndicator(
             cx + scale * 0.75f,
             cy + scale
         ),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(
+        style = Stroke(
             width = stroke
         )
     )
@@ -1394,7 +1404,7 @@ private fun DrawScope.drawFlapIndicator(
             trackWidth,
             bottom - top
         ),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(
+        style = Stroke(
             width = stroke
         )
     )
@@ -1423,7 +1433,8 @@ private fun DrawScope.drawFlapIndicator(
     // Small triangular pointer
     val triangleSize = screenHeight * 0.012f
 
-    val pointer = Path().apply {
+    val pointer = sharedPath.apply {
+        reset()
         moveTo(
             x - trackWidth / 2f,
             leverY
@@ -1448,11 +1459,10 @@ private fun DrawScope.drawFlapIndicator(
     )
 
     // FLAP label
-    val labelPaint = Paint().apply {
+    val labelPaint = sharedCenterPaint.apply {
         color = android.graphics.Color.WHITE
         textSize = screenHeight * 0.025f
-        textAlign = Paint.Align.CENTER
-        isAntiAlias = true
+        typeface = android.graphics.Typeface.DEFAULT
     }
 
     drawContext.canvas.nativeCanvas.drawText(
@@ -1496,11 +1506,9 @@ private fun DrawScope.drawVerticalSpeedValue(
         else -> displayedVs.toString()
     }
 
-    val paint = Paint().apply {
+    val paint = sharedLeftPaint.apply {
         this.color = color
         textSize = screenHeight * 0.054f
-        textAlign = Paint.Align.LEFT
-        isAntiAlias = true
         typeface = android.graphics.Typeface.DEFAULT_BOLD
     }
 
@@ -1552,7 +1560,7 @@ private fun DrawScope.drawThrottleIndicator(
             trackWidth,
             bottom - top
         ),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(
+        style = Stroke(
             width = stroke
         )
     )
@@ -1583,7 +1591,8 @@ private fun DrawScope.drawThrottleIndicator(
     // Triangle pointing into the scale
     val triangleSize = screenHeight * 0.012f
 
-    val pointer = Path().apply {
+    val pointer = sharedPath.apply {
+        reset()
 
         moveTo(
             x + trackWidth / 2f,
@@ -1609,11 +1618,10 @@ private fun DrawScope.drawThrottleIndicator(
     )
 
     // THR label
-    val labelPaint = Paint().apply {
+    val labelPaint = sharedCenterPaint.apply {
         color = android.graphics.Color.WHITE
         textSize = screenHeight * 0.025f
-        textAlign = Paint.Align.CENTER
-        isAntiAlias = true
+        typeface = android.graphics.Typeface.DEFAULT
     }
 
     drawContext.canvas.nativeCanvas.drawText(
@@ -1621,5 +1629,23 @@ private fun DrawScope.drawThrottleIndicator(
         x,
         top - screenHeight * 0.025f,
         labelPaint
+    )
+}
+
+private fun DrawScope.drawNoDataWarning(
+    screenWidth: Float,
+    screenHeight: Float
+) {
+    val paint = sharedCenterPaint.apply {
+        color = android.graphics.Color.RED
+        textSize = screenHeight * 0.055f
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+    }
+
+    drawContext.canvas.nativeCanvas.drawText(
+        "NO DATA INCOMING",
+        screenWidth / 2f,
+        screenHeight * 0.08f,
+        paint
     )
 }
