@@ -454,7 +454,7 @@ private fun DrawScope.drawBankScale(
 ) {
 
     val radius =
-        screenHeight * 0.38f
+        screenHeight * 0.4f
 
     val center = Offset(
         centerX,
